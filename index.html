@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Football Manager 2026 Web</title>
+    <!-- Tailwind CSS & Librairies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { background-color: #120a1f; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
+        .fm-sidebar { background-color: #1c0f33; border-right: 1px solid #2d1850; }
+        .fm-card { background-color: #241442; border: 1px solid #361f5e; }
+        .fm-card-header { background-color: #1e1038; }
+        .stat-high { color: #10b981; font-weight: bold; } /* > 15 Vert */
+        .stat-med { color: #f59e0b; font-weight: bold; }  /* 11-15 Jaune */
+        .stat-low { color: #94a3b8; }                      /* < 11 Gris */
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- HEADER -->
+    <header class="bg-[#1c0f33] border-b border-[#2d1850] h-14 px-4 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-4">
+            <h1 class="text-lg font-black text-purple-400 tracking-wider flex items-center gap-2">
+                <i data-lucide="shield"></i> FOOTBALL MANAGER
+            </h1>
+            <div id="club-header-info" class="text-xs text-slate-300 font-medium">En attente du choix de club...</div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <div class="text-right">
+                <div id="current-date" class="text-xs font-bold text-amber-400">Mar 4 Jul 2026</div>
+                <div id="current-time" class="text-[10px] text-slate-400">09:00</div>
+            </div>
+            <button onclick="avancerTemps()" class="bg-purple-600 hover:bg-purple-500 text-white font-black px-6 py-2 rounded shadow-lg transition flex items-center gap-2 text-sm tracking-wide">
+                CONTINUER <i data-lucide="fast-forward" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- SIDEBAR -->
+        <aside class="fm-sidebar w-56 p-2 flex flex-col gap-1 text-xs font-semibold flex-shrink-0">
+            <button onclick="naviguerVers('inbox')" id="nav-inbox" class="flex items-center gap-3 px-3 py-2.5 rounded text-purple-300 hover:bg-purple-900/40 transition">
+                <i data-lucide="inbox" class="w-4 h-4"></i> Boîte de réception <span id="inbox-count" class="ml-auto bg-purple-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">0</span>
+            </button>
+            <button onclick="naviguerVers('squad')" id="nav-squad" class="flex items-center gap-3 px-3 py-2.5 rounded text-purple-300 hover:bg-purple-900/40 transition">
+                <i data-lucide="users" class="w-4 h-4"></i> Effectif
+            </button>
+            <button onclick="naviguerVers('tactics')" id="nav-tactics" class="flex items-center gap-3 px-3 py-2.5 rounded text-purple-300 hover:bg-purple-900/40 transition">
+                <i data-lucide="layout-grid" class="w-4 h-4"></i> Tactiques
+            </button>
+            <button onclick="naviguerVers('transfers')" id="nav-transfers" class="flex items-center gap-3 px-3 py-2.5 rounded text-purple-300 hover:bg-purple-900/40 transition">
+                <i data-lucide="arrow-left-right" class="w-4 h-4"></i> Recrutement & Transferts
+            </button>
+            <div class="mt-auto pt-2 border-t border-[#2d1850] text-[10px] text-slate-500 text-center">FM 2026 Web Edition</div>
+        </aside>
+
+        <!-- CONTENU PRINCIPAL -->
+        <main class="flex-1 bg-[#120a1f] p-4 overflow-y-auto">
+
+            <!-- VUE 1 : INBOX -->
+            <div id="view-inbox" class="h-full flex gap-4">
+                <div class="w-1/3 fm-card rounded overflow-hidden flex flex-col">
+                    <div class="fm-card-header p-3 font-bold text-xs text-purple-300 border-b border-[#361f5e]">Messages</div>
+                    <div id="inbox-list" class="divide-y divide-[#2d1850] overflow-y-auto flex-1"></div>
+                </div>
+                <div class="w-2/3 fm-card rounded p-6 flex flex-col justify-between" id="inbox-detail">
+                    <div class="text-center text-slate-500 my-auto">Sélectionne un message dans la liste.</div>
+                </div>
+            </div>
+
+            <!-- VUE 2 : EFFECTIF -->
+            <div id="view-squad" class="hidden space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-purple-300">Effectif Première Équipe</h2>
+                    <select id="squad-club-select" class="bg-[#1c0f33] border border-[#361f5e] text-xs px-3 py-1.5 rounded text-purple-300 outline-none"></select>
+                </div>
+                <div class="fm-card rounded overflow-hidden">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="fm-card-header text-slate-400 border-b border-[#361f5e]">
+                                <th class="p-3">Nom</th>
+                                <th class="p-3">Poste</th>
+                                <th class="p-3">Nationalité</th>
+                                <th class="p-3 text-right">Valeur</th>
+                                <th class="p-3 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="squad-table-body" class="divide-y divide-[#2d1850]"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VUE 3 : PROFIL JOUEUR -->
+            <div id="view-player" class="hidden space-y-4">
+                <div class="fm-card p-4 rounded flex justify-between items-center">
+                    <div>
+                        <div class="text-xl font-black text-white flex items-center gap-2" id="p-name">Nom du joueur</div>
+                        <div class="text-xs text-purple-300" id="p-sub">27 ans | Milieu Offensif</div>
+                    </div>
+                    <div class="flex gap-6 text-right text-xs">
+                        <div>
+                            <div class="text-slate-400">Valeur marchande</div>
+                            <div class="font-bold text-emerald-400 text-sm" id="p-value">€1.3M</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-8 fm-card p-4 rounded grid grid-cols-3 gap-4 text-xs">
+                        <div>
+                            <div class="font-bold text-purple-300 mb-2 pb-1 border-b border-[#361f5e]">TECHNIQUE</div>
+                            <div class="space-y-1" id="stats-tech"></div>
+                        </div>
+                        <div>
+                            <div class="font-bold text-purple-300 mb-2 pb-1 border-b border-[#361f5e]">MENTAL</div>
+                            <div class="space-y-1" id="stats-mental"></div>
+                        </div>
+                        <div>
+                            <div class="font-bold text-purple-300 mb-2 pb-1 border-b border-[#361f5e]">PHYSIQUE</div>
+                            <div class="space-y-1" id="stats-phys"></div>
+                        </div>
+                    </div>
+
+                    <div class="col-span-4 fm-card p-4 rounded flex flex-col items-center justify-center">
+                        <div class="text-xs font-bold text-purple-300 mb-2">PROFIL POLYGONAL</div>
+                        <div class="w-full h-48">
+                            <canvas id="radarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="fm-card p-4 rounded flex justify-between items-center">
+                    <div class="text-xs">
+                        <span class="text-slate-400">Statut transfert :</span> 
+                        <span class="text-amber-400 font-bold ml-1" id="p-status">Disponible sur le marché</span>
+                    </div>
+                    <button onclick="ouvrirModalIntermediaire()" class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-4 py-2 rounded transition flex items-center gap-2">
+                        <i data-lucide="user-check" class="w-4 h-4"></i> Engager un Intermédiaire (Agent)
+                    </button>
+                </div>
+            </div>
+
+            <!-- VUE 4 : TACTIQUES -->
+            <div id="view-tactics" class="hidden">
+                <h2 class="text-lg font-bold text-purple-300 mb-4">Composition d'Équipe</h2>
+                <div class="fm-card p-6 rounded text-center">
+                    <div class="w-96 h-[480px] bg-emerald-800 border-2 border-white/30 rounded mx-auto relative p-4 flex flex-col justify-between">
+                        <div class="flex justify-around"><div class="bg-purple-900 border border-amber-400 text-[10px] px-2 py-1 rounded font-bold">ATT (BUP)</div></div>
+                        <div class="flex justify-around"><div class="bg-purple-900 border border-amber-400 text-[10px] px-2 py-1 rounded font-bold">MOC</div></div>
+                        <div class="flex justify-around"><div class="bg-purple-900 border border-amber-400 text-[10px] px-2 py-1 rounded font-bold">MC</div><div class="bg-purple-900 border border-amber-400 text-[10px] px-2 py-1 rounded font-bold">MC</div></div>
+                        <div class="flex justify-around"><div class="bg-purple-900 border border-amber-400 text-[10px] px-2 py-1 rounded font-bold">DG</div><div class="bg-purple-900 border border-amber-400 text-[10px] px-2 py-1 rounded font-bold">DC</div><div class="bg-purple-900 border border-amber-400 text-[10px] px-2 py-1 rounded font-bold">DC</div><div class="bg-purple-900 border border-amber-400 text-[10px] px-2 py-1 rounded font-bold">DD</div></div>
+                        <div class="flex justify-around"><div class="bg-purple-900 border border-amber-400 text-[10px] px-2 py-1 rounded font-bold">G</div></div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL NOUVELLE PARTIE -->
+    <div id="modal-start" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
+        <div class="fm-card w-full max-w-md rounded shadow-2xl p-6 space-y-4">
+            <h2 class="text-xl font-black text-purple-400 border-b border-[#361f5e] pb-2 text-center">
+                NOUVELLE PARTIE — FM 2026
+            </h2>
+            
+            <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">Nom du Manager</label>
+                <input type="text" id="start-manager-name" value="Entraîneur" class="w-full bg-[#1c0f33] border border-[#361f5e] text-xs p-2 rounded text-white outline-none focus:border-purple-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">Choisir ton Club</label>
+                <select id="start-club-select" class="w-full bg-[#1c0f33] border border-[#361f5e] text-xs p-2 rounded text-purple-300 outline-none focus:border-purple-500"></select>
+            </div>
+
+            <button onclick="lancerNouvellePartie()" class="w-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-black py-3 rounded transition tracking-wider">
+                PRENDRE LES RÊNES DU CLUB
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL AGENT -->
+    <div id="modal-agent" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+        <div class="fm-card w-full max-w-lg rounded shadow-2xl p-6 space-y-4">
+            <h3 class="text-base font-bold text-amber-400 flex items-center gap-2 border-b border-[#361f5e] pb-2">
+                <i data-lucide="briefcase"></i> ENGAGER UN INTERMÉDIAIRE
+            </h3>
+            <p class="text-xs text-slate-300">Sélectionne un agent pour trouver des acheteurs potentiels et négocier le transfert du joueur.</p>
+            
+            <div class="space-y-2 text-xs" id="agent-list"></div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-[#361f5e]">
+                <button onclick="fermerModalAgent()" class="bg-slate-700 hover:bg-slate-600 text-xs font-bold px-4 py-2 rounded">Annuler</button>
+                <button onclick="confirmerAgent()" class="bg-amber-600 hover:bg-amber-500 text-xs font-bold px-4 py-2 rounded">Confirmer</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
